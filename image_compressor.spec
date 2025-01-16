@@ -13,7 +13,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        (tkdnd_path, 'tkinterdnd2/tkdnd'),  # Include tkdnd library files
+        (tkdnd_path, 'tkinterdnd2/tkdnd'),  # Add base tkdnd directory
     ],
     hiddenimports=[
         'PIL._tkinter_finder',
@@ -30,16 +30,6 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-
-# Add tkdnd library files
-tkdnd_files = []
-for root, dirs, files in os.walk(tkdnd_path):
-    for file in files:
-        source = os.path.join(root, file)
-        dest = os.path.join('tkinterdnd2/tkdnd', os.path.relpath(source, tkdnd_path))
-        tkdnd_files.append((source, dest))
-
-a.datas += tkdnd_files
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
