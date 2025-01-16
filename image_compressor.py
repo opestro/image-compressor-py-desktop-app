@@ -672,7 +672,13 @@ def main():
     logging.info("Starting application")
     root = None
     try:
-        # Create main window first
+        # Initialize tkdnd
+        if hasattr(sys, '_MEIPASS'):
+            # Running as compiled executable
+            tkdnd_path = os.path.join(sys._MEIPASS, 'tkinterdnd2', 'tkdnd')
+            os.environ['TKDND_LIBRARY'] = tkdnd_path
+        
+        # Create main window
         root = TkinterDnD.Tk()
         root.withdraw()
         logging.debug("Main window created")
@@ -689,7 +695,7 @@ def main():
         # Destroy splash screen and show main window
         splash.destroy()
         root.deiconify()
-        root.update()  # Ensure window is fully initialized
+        root.update()
         logging.debug("Main window displayed")
         
         # Start main loop

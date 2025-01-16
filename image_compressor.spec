@@ -1,4 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+import site
+import tkinterdnd2
+
+# Get tkdnd library path
+tkdnd_path = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
 
 block_cipher = None
 
@@ -7,10 +13,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        # Remove files that don't exist yet
-        # ('compression_profiles.json', '.'),
-        # ('app.log', '.'),
-        # ('icon.ico', '.')
+        (tkdnd_path, 'tkinterdnd2/tkdnd'),  # Include tkdnd library files
     ],
     hiddenimports=[
         'PIL._tkinter_finder',
@@ -28,6 +31,16 @@ a = Analysis(
     noarchive=False,
 )
 
+# Add tkdnd library files
+tkdnd_files = []
+for root, dirs, files in os.walk(tkdnd_path):
+    for file in files:
+        source = os.path.join(root, file)
+        dest = os.path.join('tkinterdnd2/tkdnd', os.path.relpath(source, tkdnd_path))
+        tkdnd_files.append((source, dest))
+
+a.datas += tkdnd_files
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
@@ -44,11 +57,9 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=True,  # Keep True for debugging
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # icon='icon.ico',
-    # version='file_version_info.txt',
 ) 
