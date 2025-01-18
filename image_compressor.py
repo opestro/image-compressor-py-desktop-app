@@ -26,6 +26,34 @@ logging.basicConfig(
     ]
 )
 
+class CollapsibleFrame(ttk.Frame):
+    """A frame that can be collapsed and expanded"""
+    def __init__(self, parent, text="", *args, **kwargs):
+        ttk.Frame.__init__(self, parent, *args, **kwargs)
+        
+        self.show = tk.BooleanVar(value=True)
+        self.text = text
+        
+        # Create header button that shows/hides content
+        self.toggle_button = ttk.Checkbutton(
+            self, text=text,  # Use text directly instead of StringVar
+            command=self.toggle, 
+            style='Toggle.TCheckbutton',
+            variable=self.show)
+        self.toggle_button.grid(row=0, column=0, sticky="ew")
+        
+        # Create sub-frame for content
+        self.sub_frame = ttk.Frame(self, padding=(15, 5, 5, 5))  # Added padding
+        self.sub_frame.grid(row=1, column=0, sticky="nsew")
+        self.grid_columnconfigure(0, weight=1)
+    
+    def toggle(self):
+        """Toggle the visibility of the sub-frame"""
+        if self.show.get():
+            self.sub_frame.grid()
+        else:
+            self.sub_frame.grid_remove()
+
 class ImageCompressorApp:
     def __init__(self, root):
         logging.info("Initializing ImageCompressorApp")
@@ -104,190 +132,155 @@ class ImageCompressorApp:
             raise
     
     def setup_ui(self):
-        # Add menu bar
-        menubar = tk.Menu(self.root)
-        self.root.config(menu=menubar)
+        # Configure modern styles
+        style = ttk.Style()
         
-        # File menu
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Open Images", command=self.browse_files)
-        file_menu.add_command(label="Clear All", command=self.clear_files)
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.root.quit)
+        # Modern button style
+        style.configure('TButton', 
+                       padding=5, 
+                       font=('Helvetica', 9))
         
-        # Help menu
-        help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="About", command=self.show_about)
+        # Modern checkbutton style
+        style.configure('TCheckbutton', 
+                       font=('Helvetica', 9))
         
-        # Main container
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Collapsible frame header style
+        style.configure('Toggle.TCheckbutton', 
+                       font=('Helvetica', 10, 'bold'),
+                       padding=8,
+                       background='#f0f0f0',  # Light gray background
+                       relief='flat')
         
-        # Left panel for drop zone and file list
+        # Entry style
+        style.configure('TEntry', 
+                       padding=5)
+        
+        # Label style
+        style.configure('TLabel', 
+                       font=('Helvetica', 9),
+                       padding=2)
+        
+        # Frame style
+        style.configure('TFrame', 
+                       background='white')
+        
+        # Scale (slider) style
+        style.configure('Horizontal.TScale', 
+                       sliderlength=15)
+        
+        # Main container with padding
+        main_frame = ttk.Frame(self.root, padding=10)
+        main_frame.pack(fill="both", expand=True)
+        
+        # Left panel for drop zone, preview, and file list
         left_panel = ttk.Frame(main_frame)
-        left_panel.pack(side="left", fill="both", expand=True)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
-        # Drop zone
-        self.drop_frame = ttk.LabelFrame(left_panel, text="Drag & Drop Images Here")
-        self.drop_frame.pack(padx=5, pady=5, fill="both", expand=True)
+        # Drop zone with modern look
+        self.drop_frame = ttk.LabelFrame(left_panel, text="Drop Images Here", padding=10)
+        self.drop_frame.pack(padx=5, pady=5, fill="x")  # Changed to fill="x"
         
-        self.drop_label = ttk.Label(self.drop_frame, text="Drop images here or click to browse")
+        self.drop_label = ttk.Label(
+            self.drop_frame, 
+            text="Drop images here or click to browse",
+            font=('Helvetica', 10))
         self.drop_label.pack(pady=20)
         
-        # File list
-        list_frame = ttk.LabelFrame(left_panel, text="Selected Files")
-        list_frame.pack(padx=5, pady=5, fill="both", expand=True)
+        # Preview section
+        preview_frame = ttk.LabelFrame(left_panel, text="Preview", padding=5)
+        preview_frame.pack(padx=5, pady=5, fill="both", expand=True)
         
-        # Scrollbar for file list
+        # Preview label for image
+        self.preview_label = ttk.Label(preview_frame)
+        self.preview_label.pack(pady=5)
+        
+        # File info label
+        self.file_info_label = ttk.Label(preview_frame, justify="left")
+        self.file_info_label.pack(pady=5)
+        
+        # File list with modern look
+        list_frame = ttk.LabelFrame(left_panel, text="Selected Files", padding=5)
+        list_frame.pack(padx=5, pady=5, fill="both")  # Reduced size
+        
+        # Modern scrollbar
         scrollbar = ttk.Scrollbar(list_frame)
         scrollbar.pack(side="right", fill="y")
         
-        self.file_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set)
+        # Modern listbox with selection binding
+        self.file_listbox = tk.Listbox(
+            list_frame, 
+            yscrollcommand=scrollbar.set,
+            font=('Helvetica', 9),
+            selectmode='extended',
+            activestyle='none',
+            borderwidth=0,
+            height=6,  # Reduced height
+            highlightthickness=0)
         self.file_listbox.pack(fill="both", expand=True)
         scrollbar.config(command=self.file_listbox.yview)
         
-        # Bind listbox selection
+        # Bind selection event
         self.file_listbox.bind('<<ListboxSelect>>', self.on_select_file)
         
-        # Clear files button
-        self.clear_btn = ttk.Button(left_panel, text="Clear All Files", command=self.clear_files)
+        # Clear button with modern look
+        self.clear_btn = ttk.Button(
+            left_panel, 
+            text="Clear All Files",
+            command=self.clear_files,  # Added command
+            style='TButton')
         self.clear_btn.pack(pady=5)
         
-        # Center panel for preview
-        center_panel = ttk.Frame(main_frame)
-        center_panel.pack(side="left", fill="both", expand=True, padx=10)
-        
-        # Preview frame
-        preview_frame = ttk.LabelFrame(center_panel, text="Preview")
-        preview_frame.pack(fill="both", expand=True)
-        
-        self.preview_label = ttk.Label(preview_frame)
-        self.preview_label.pack(pady=10)
-        
-        # File info frame
-        self.info_frame = ttk.LabelFrame(center_panel, text="File Information")
-        self.info_frame.pack(fill="x", pady=5)
-        
-        self.file_info_label = ttk.Label(self.info_frame, text="No file selected")
-        self.file_info_label.pack(pady=5)
-        
-        # Right panel for controls
+        # Right scrollable panel
         right_panel = ttk.Frame(main_frame)
         right_panel.pack(side="right", fill="y")
         
-        # Format selection
-        format_frame = ttk.LabelFrame(right_panel, text="Output Format")
-        format_frame.pack(pady=5, fill="x")
+        # Canvas for scrolling
+        canvas = tk.Canvas(right_panel, width=300, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(right_panel, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
         
-        formats = [("WebP", "webp"), ("JPEG", "jpeg"), ("PNG", "png")]
-        for text, value in formats:
-            ttk.Radiobutton(format_frame, text=text, value=value, 
-                           variable=self.output_format).pack(padx=10, pady=2)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         
-        # Quality slider
-        quality_frame = ttk.LabelFrame(right_panel, text="Quality")
-        quality_frame.pack(pady=5, fill="x")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=300)
+        canvas.configure(yscrollcommand=scrollbar.set)
         
-        self.quality_slider = ttk.Scale(quality_frame, from_=1, to=100, 
-                                      variable=self.quality, orient="horizontal")
-        self.quality_slider.pack(padx=10, pady=5, fill="x")
+        # Pack canvas and scrollbar
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
         
-        # Progress bar
-        self.progress_frame = ttk.LabelFrame(right_panel, text="Progress")
-        self.progress_frame.pack(pady=5, fill="x")
+        # Add mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
         
-        self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate')
-        self.progress_bar.pack(padx=10, pady=5, fill="x")
-        
-        # Add resize options to right panel
-        resize_frame = ttk.LabelFrame(right_panel, text="Resize Options")
-        resize_frame.pack(pady=5, fill="x")
-        
-        ttk.Checkbutton(resize_frame, text="Enable Resize", 
-                       variable=self.resize_enabled).pack(padx=10, pady=2)
-        
-        # Dimensions frame
-        dim_frame = ttk.Frame(resize_frame)
-        dim_frame.pack(fill="x", padx=10, pady=5)
-        
-        ttk.Label(dim_frame, text="Width:").pack(side="left")
-        ttk.Entry(dim_frame, textvariable=self.width, width=8).pack(side="left", padx=5)
-        
-        ttk.Label(dim_frame, text="Height:").pack(side="left")
-        ttk.Entry(dim_frame, textvariable=self.height, width=8).pack(side="left", padx=5)
-        
-        ttk.Checkbutton(resize_frame, text="Maintain Aspect Ratio", 
-                       variable=self.maintain_aspect).pack(padx=10, pady=2)
-        
-        # Preset sizes
-        preset_frame = ttk.Frame(resize_frame)
-        preset_frame.pack(fill="x", padx=10, pady=5)
-        
-        presets = [
-            ("Custom", "custom"),
-            ("HD (1920x1080)", "hd"),
-            ("4K (3840x2160)", "4k"),
-            ("Thumbnail (300x300)", "thumbnail"),
-            ("Social (1200x1200)", "social")
+        # Collapsible sections with modern styling
+        sections = [
+            ("Format Options", self.setup_format_section),
+            ("Quality Settings", self.setup_quality_section),
+            ("Resize Options", self.setup_resize_section),
+            ("Compression Profiles", self.setup_profile_section),
+            ("Metadata Options", self.setup_metadata_section),
+            ("Batch Rename", self.setup_rename_section),
+            ("Progress", self.setup_progress_section)
         ]
         
-        ttk.Label(preset_frame, text="Presets:").pack(anchor="w")
-        for text, value in presets:
-            ttk.Radiobutton(preset_frame, text=text, value=value,
-                          variable=self.selected_preset,
-                          command=self.apply_preset).pack(anchor="w")
+        for title, setup_func in sections:
+            frame = CollapsibleFrame(scrollable_frame, text=title)
+            frame.pack(fill="x", pady=2)
+            setup_func(frame.sub_frame)
         
-        # Compression profiles
-        profile_frame = ttk.LabelFrame(right_panel, text="Compression Profiles")
-        profile_frame.pack(pady=5, fill="x")
-        
-        profiles = ["Custom"] + list(self.profiles.keys())
-        ttk.Label(profile_frame, text="Select Profile:").pack(padx=10, pady=2)
-        profile_menu = ttk.OptionMenu(profile_frame, self.selected_profile, 
-                                    "Custom", *profiles, 
-                                    command=self.apply_profile)
-        profile_menu.pack(padx=10, pady=2, fill="x")
-        
-        # Save profile button
-        ttk.Button(profile_frame, text="Save Current as Profile",
-                  command=self.save_profile).pack(padx=10, pady=2, fill="x")
-        
-        # Metadata options
-        metadata_frame = ttk.LabelFrame(right_panel, text="Metadata Options")
-        metadata_frame.pack(pady=5, fill="x")
-        
-        ttk.Checkbutton(metadata_frame, text="Preserve Metadata",
-                       variable=self.preserve_metadata).pack(padx=10, pady=2)
-        
-        ttk.Button(metadata_frame, text="View Metadata",
-                  command=self.view_metadata).pack(padx=10, pady=2)
-        
-        # Batch rename options
-        rename_frame = ttk.LabelFrame(right_panel, text="Batch Rename")
-        rename_frame.pack(pady=5, fill="x")
-        
-        ttk.Checkbutton(rename_frame, text="Enable Batch Rename",
-                       variable=self.rename_enabled).pack(padx=10, pady=2)
-        
-        ttk.Label(rename_frame, text="Pattern:").pack(padx=10, pady=(5,0))
-        pattern_entry = ttk.Entry(rename_frame, textvariable=self.rename_pattern)
-        pattern_entry.pack(padx=10, pady=(0,5), fill="x")
-        
-        ttk.Label(rename_frame, text="Available variables:\n{original_name}, {number},\n{date}, {width}, {height}").pack(padx=10)
-        
-        number_frame = ttk.Frame(rename_frame)
-        number_frame.pack(fill="x", padx=10, pady=5)
-        ttk.Label(number_frame, text="Start Number:").pack(side="left")
-        ttk.Entry(number_frame, textvariable=self.start_number, width=8).pack(side="left", padx=5)
-        
-        # Compress button
-        self.compress_btn = ttk.Button(right_panel, text="Compress Images", 
-                                     command=self.compress_images)
+        # Compress button at bottom
+        self.compress_btn = ttk.Button(
+            scrollable_frame,
+            text="Compress Images",
+            style='TButton',
+            command=self.compress_images)
         self.compress_btn.pack(pady=10)
 
     def on_select_file(self, event):
+        """Handle file selection and update preview"""
         selection = self.file_listbox.curselection()
         if selection:
             index = selection[0]
@@ -296,6 +289,7 @@ class ImageCompressorApp:
             self.update_file_info(file_path)
     
     def show_preview(self, file_path):
+        """Show image preview and update info"""
         logging.debug(f"Attempting to show preview for: {file_path}")
         try:
             self.clear_preview()
@@ -340,6 +334,7 @@ class ImageCompressorApp:
             logging.error(traceback.format_exc())
     
     def update_file_info(self, file_path):
+        """Update file information display"""
         try:
             file_size = os.path.getsize(file_path)
             with Image.open(file_path) as img:
@@ -667,6 +662,85 @@ class ImageCompressorApp:
             self._photo_references.clear()
         except Exception as e:
             logging.error(f"Error in __del__: {str(e)}")
+
+    def setup_format_section(self, parent):
+        ttk.Label(parent, text="Output Format:").pack(padx=10, pady=2)
+        for fmt in ["JPEG", "PNG", "WebP"]:
+            ttk.Radiobutton(parent, text=fmt, value=fmt.lower(),
+                           variable=self.output_format).pack(padx=10, pady=2)
+
+    def setup_quality_section(self, parent):
+        ttk.Label(parent, text="Quality:").pack(padx=10, pady=2)
+        self.quality_slider = ttk.Scale(
+            parent, from_=1, to=100,
+            variable=self.quality, 
+            orient="horizontal")
+        self.quality_slider.pack(padx=10, pady=5, fill="x")
+
+    def setup_resize_section(self, parent):
+        ttk.Checkbutton(parent, text="Enable Resize",
+                       variable=self.resize_enabled).pack(padx=10, pady=2)
+        
+        dim_frame = ttk.Frame(parent)
+        dim_frame.pack(fill="x", padx=10, pady=5)
+        
+        ttk.Label(dim_frame, text="Width:").pack(side="left")
+        ttk.Entry(dim_frame, textvariable=self.width, width=8).pack(side="left", padx=5)
+        ttk.Label(dim_frame, text="Height:").pack(side="left")
+        ttk.Entry(dim_frame, textvariable=self.height, width=8).pack(side="left", padx=5)
+        
+        ttk.Checkbutton(parent, text="Maintain Aspect Ratio",
+                       variable=self.maintain_aspect).pack(padx=10, pady=2)
+        
+        ttk.Label(parent, text="Presets:").pack(padx=10, pady=2)
+        for text, value in [
+            ("Custom", "custom"),
+            ("HD (1920x1080)", "hd"),
+            ("4K (3840x2160)", "4k"),
+            ("Thumbnail (300x300)", "thumbnail"),
+            ("Social (1200x1200)", "social")
+        ]:
+            ttk.Radiobutton(parent, text=text, value=value,
+                          variable=self.selected_preset,
+                          command=self.apply_preset).pack(padx=10, pady=2)
+
+    def setup_profile_section(self, parent):
+        profiles = ["Custom"] + list(self.profiles.keys())
+        ttk.Label(parent, text="Select Profile:").pack(padx=10, pady=2)
+        profile_menu = ttk.OptionMenu(parent, self.selected_profile,
+                                    "Custom", *profiles,
+                                    command=self.apply_profile)
+        profile_menu.pack(padx=10, pady=2, fill="x")
+        
+        ttk.Button(parent, text="Save Current as Profile",
+                  command=self.save_profile).pack(padx=10, pady=2, fill="x")
+
+    def setup_metadata_section(self, parent):
+        ttk.Checkbutton(parent, text="Preserve Metadata",
+                       variable=self.preserve_metadata).pack(padx=10, pady=2)
+        ttk.Button(parent, text="View Metadata",
+                  command=self.view_metadata).pack(padx=10, pady=2)
+
+    def setup_rename_section(self, parent):
+        ttk.Checkbutton(parent, text="Enable Batch Rename",
+                       variable=self.rename_enabled).pack(padx=10, pady=2)
+        
+        ttk.Label(parent, text="Pattern:").pack(padx=10, pady=(5,0))
+        pattern_entry = ttk.Entry(parent, textvariable=self.rename_pattern)
+        pattern_entry.pack(padx=10, pady=(0,5), fill="x")
+        
+        ttk.Label(parent, 
+                 text="Available variables:\n{original_name}, {number},\n{date}, {width}, {height}",
+                 justify="left").pack(padx=10)
+        
+        number_frame = ttk.Frame(parent)
+        number_frame.pack(fill="x", padx=10, pady=5)
+        ttk.Label(number_frame, text="Start Number:").pack(side="left")
+        ttk.Entry(number_frame, textvariable=self.start_number, width=8).pack(side="left", padx=5)
+
+    def setup_progress_section(self, parent):
+        self.progress_bar = ttk.Progressbar(parent, mode='determinate')
+        self.progress_bar.pack(padx=10, pady=5, fill="x")
 
 def main():
     logging.info("Starting application")
