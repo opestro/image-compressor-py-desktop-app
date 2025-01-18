@@ -74,6 +74,12 @@ class ImageCompressorApp:
         self.rename_enabled = tk.BooleanVar(value=False)
         self.rename_pattern = tk.StringVar(value="{original_name}")
         self.start_number = tk.IntVar(value=1)
+        self.supported_formats = {
+            "JPEG": ".jpg",
+            "PNG": ".png",
+            "WebP": ".webp",
+            "ICO": ".ico"  # Added ICO support
+        }
         
         # Initialize compression profiles
         self.profiles = {
@@ -372,7 +378,6 @@ class ImageCompressorApp:
                         new_height = int(self.height.get()) if self.height.get() else img.height
                         
                         if self.maintain_aspect.get():
-                            # Calculate new dimensions maintaining aspect ratio
                             aspect_ratio = img.width / img.height
                             if new_width and new_height:
                                 if new_width / new_height > aspect_ratio:
@@ -385,7 +390,7 @@ class ImageCompressorApp:
                         messagebox.showerror("Error", "Invalid dimensions provided")
                         return
                 
-                # Convert RGBA to RGB if necessary
+                # Convert RGBA to RGB if necessary for JPEG
                 if img.mode == 'RGBA' and self.output_format.get() == 'jpeg':
                     img = img.convert('RGB')
                 
@@ -398,27 +403,33 @@ class ImageCompressorApp:
                 output_path = os.path.join(output_dir, 
                     f"{filename}.{self.output_format.get()}")
                 
-                # Preserve metadata if enabled
-                save_kwargs = {
-                    'quality': self.quality.get(),
-                    'optimize': True
-                }
-                
-                if self.preserve_metadata.get():
-                    try:
-                        if img.info.get('exif'):
-                            save_kwargs['exif'] = img.info['exif']
-                        if img.info.get('icc_profile'):
-                            save_kwargs['icc_profile'] = img.info['icc_profile']
-                    except:
-                        pass
-                
-                # Save with format-specific options
-                if self.output_format.get() == 'webp':
-                    save_kwargs['method'] = 6
-                    save_kwargs['lossless'] = False
-                
-                img.save(output_path, format=self.output_format.get().upper(), **save_kwargs)
+                # Special handling for ICO format
+                if self.output_format.get() == 'ico':
+                    # ICO format requires specific sizes
+                    sizes = [(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)]
+                    img.save(output_path, format='ICO', sizes=sizes)
+                else:
+                    # Save with format-specific options
+                    save_kwargs = {
+                        'quality': self.quality.get(),
+                        'optimize': True
+                    }
+                    
+                    if self.preserve_metadata.get():
+                        try:
+                            if img.info.get('exif'):
+                                save_kwargs['exif'] = img.info['exif']
+                            if img.info.get('icc_profile'):
+                                save_kwargs['icc_profile'] = img.info['icc_profile']
+                        except:
+                            pass
+                    
+                    # Format-specific options
+                    if self.output_format.get() == 'webp':
+                        save_kwargs['method'] = 6
+                        save_kwargs['lossless'] = False
+                    
+                    img.save(output_path, format=self.output_format.get().upper(), **save_kwargs)
                 
                 # Update progress
                 self.progress_bar['value'] = i + 1
@@ -446,7 +457,7 @@ class ImageCompressorApp:
         self.update_file_list()
     
     def is_valid_image(self, file_path):
-        return file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
+        return file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.ico'))
     
     def clear_files(self):
         """Clear all files and preview"""
@@ -665,7 +676,7 @@ class ImageCompressorApp:
 
     def setup_format_section(self, parent):
         ttk.Label(parent, text="Output Format:").pack(padx=10, pady=2)
-        for fmt in ["JPEG", "PNG", "WebP"]:
+        for fmt in ["JPEG", "PNG", "WebP", "ICO"]:  # Added ICO to format options
             ttk.Radiobutton(parent, text=fmt, value=fmt.lower(),
                            variable=self.output_format).pack(padx=10, pady=2)
 
@@ -748,7 +759,6 @@ def main():
     try:
         # Initialize tkdnd
         if hasattr(sys, '_MEIPASS'):
-            # Running as compiled executable
             tkdnd_path = os.path.join(sys._MEIPASS, 'tkinterdnd2', 'tkdnd')
             os.environ['TKDND_LIBRARY'] = tkdnd_path
         
@@ -758,7 +768,7 @@ def main():
         logging.debug("Main window created")
         
         # Show splash screen
-        splash = SplashScreen()
+        splash = SplashScreen(root)  # Pass root as parent
         splash.progress_bar()
         logging.debug("Splash screen displayed")
         
@@ -772,9 +782,7 @@ def main():
         root.update()
         logging.debug("Main window displayed")
         
-        # Start main loop
         root.mainloop()
-        logging.info("Application mainloop ended")
         
     except Exception as e:
         logging.error(f"Critical error in main: {str(e)}")
@@ -785,85 +793,6 @@ def main():
             except:
                 pass
         raise
-    finally:
-        logging.info("Application shutdown")
-        try:
-            if root:
-                root.destroy()
-        except Exception as e:
-            logging.error(f"Error during final cleanup: {str(e)}")
-
-class SplashScreen:
-    def __init__(self):
-        self.root = tk.Tk()  # Create a separate root for splash screen
-        self.splash = tk.Toplevel(self.root)
-        self.root.withdraw()  # Hide the root window
-        self.splash.overrideredirect(True)
-        
-        # Get screen dimensions
-        screen_width = self.splash.winfo_screenwidth()
-        screen_height = self.splash.winfo_screenheight()
-        
-        # Set splash window dimensions
-        width = 400
-        height = 300
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
-        
-        self.splash.geometry(f'{width}x{height}+{x}+{y}')
-        
-        # Create main frame
-        main_frame = ttk.Frame(self.splash)
-        main_frame.pack(fill="both", expand=True)
-        
-        # Configure style
-        style = ttk.Style()
-        style.configure("Splash.TLabel", font=("Helvetica", 12))
-        style.configure("Title.TLabel", font=("Helvetica", 20, "bold"))
-        style.configure("Contact.TLabel", font=("Helvetica", 10))
-        
-        # Add app title
-        ttk.Label(main_frame, text="Image Compressor", 
-                 style="Title.TLabel").pack(pady=20)
-        
-        # Add progress bar
-        self.progress = ttk.Progressbar(main_frame, length=300, mode='determinate')
-        self.progress.pack(pady=20)
-        
-        # Add developer info
-        ttk.Label(main_frame, text="Developed by:", 
-                 style="Splash.TLabel").pack(pady=(20,5))
-        ttk.Label(main_frame, text="MEHDI HARZALLAH", 
-                 style="Title.TLabel").pack()
-        
-        # Add contact info
-        contact_frame = ttk.Frame(main_frame)
-        contact_frame.pack(pady=20)
-        
-        ttk.Label(contact_frame, text="WhatsApp: +213 778191078", 
-                 style="Contact.TLabel").pack()
-        ttk.Label(contact_frame, text="GitHub: github.com/opestro", 
-                 style="Contact.TLabel").pack()
-        
-        # Add version info
-        ttk.Label(main_frame, text="Version 1.0.0", 
-                 style="Contact.TLabel").pack(side="bottom", pady=10)
-        
-        self.splash.update()
-    
-    def progress_bar(self):
-        """Update progress bar"""
-        for i in range(101):
-            self.progress['value'] = i
-            self.splash.update()
-            time.sleep(0.02)  # Add small delay for visual effect
-    
-    def destroy(self):
-        """Clean up and destroy splash screen"""
-        try:
-            self.root.destroy()
-        except Exception as e:
-            logging.error(f"Error destroying splash screen: {str(e)}")
 
 if __name__ == "__main__":
     try:

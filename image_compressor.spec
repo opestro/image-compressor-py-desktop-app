@@ -14,6 +14,8 @@ a = Analysis(
     binaries=[],
     datas=[
         (tkdnd_path, 'tkinterdnd2/tkdnd'),  # Add base tkdnd directory
+        ('assets/logo.png', 'assets'),  # Add logo file
+        ('assets/logo.ico', '.'),  # Add icon file
     ],
     hiddenimports=[
         'PIL._tkinter_finder',
@@ -47,9 +49,10 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,  # Keep True for debugging
+    console=False,  # Changed to False for production
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/logo.ico',  # Add icon for the executable
 ) 
