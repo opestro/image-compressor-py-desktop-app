@@ -1,6 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
-from tkinterdnd2 import DND_FILES, TkinterDnD
 from PIL import Image, ImageTk
 import os
 from pathlib import Path
@@ -16,12 +15,40 @@ import traceback
 import sys
 import time
 
+# Try to import tkinterdnd2 with fallback
+DRAG_DROP_AVAILABLE = False
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    DRAG_DROP_AVAILABLE = True
+    print("Drag and drop functionality available")
+except ImportError as e:
+    print(f"Drag and drop not available: {e}")
+    # Fallback to regular tkinter
+    class TkinterDnD:
+        @staticmethod
+        def Tk():
+            return tk.Tk()
+    DND_FILES = None
+
 # Set up logging
+import tempfile
+from pathlib import Path
+
+# Create log file in user's home directory for packaged app
+if hasattr(sys, '_MEIPASS'):
+    # Running as packaged app - use user's home directory
+    log_dir = Path.home() / '.imagecompressor'
+    log_dir.mkdir(exist_ok=True)
+    log_file = log_dir / 'app.log'
+else:
+    # Running in development - use current directory
+    log_file = 'app.log'
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('app.log'),
+        logging.FileHandler(log_file),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -444,10 +471,22 @@ class ImageCompressorApp:
         self.update_file_list()
 
     def setup_drag_drop(self):
-        self.drop_frame.drop_target_register('DND_Files')
-        self.drop_frame.dnd_bind('<<Drop>>', self.handle_drop)
+        global DRAG_DROP_AVAILABLE
+        if DRAG_DROP_AVAILABLE:
+            try:
+                self.drop_frame.drop_target_register('DND_Files')
+                self.drop_frame.dnd_bind('<<Drop>>', self.handle_drop)
+                logging.info("Drag and drop functionality enabled")
+            except Exception as e:
+                logging.warning(f"Failed to setup drag and drop: {e}")
+                DRAG_DROP_AVAILABLE = False
         
-        # Bind drop zone events
+        if not DRAG_DROP_AVAILABLE:
+            # Update label to indicate click-only mode
+            self.drop_label.config(text="Click here to browse and select images")
+            logging.info("Running in click-only mode (no drag and drop)")
+        
+        # Always bind click events
         self.drop_label.bind("<Button-1>", self.browse_files)
     
     def handle_drop(self, event):
@@ -754,16 +793,28 @@ class ImageCompressorApp:
         self.progress_bar.pack(padx=10, pady=5, fill="x")
 
 def main():
+    global DRAG_DROP_AVAILABLE
     logging.info("Starting application")
     root = None
     try:
-        # Initialize tkdnd
-        if hasattr(sys, '_MEIPASS'):
-            tkdnd_path = os.path.join(sys._MEIPASS, 'tkinterdnd2', 'tkdnd')
-            os.environ['TKDND_LIBRARY'] = tkdnd_path
+        # Initialize tkdnd only if available
+        if DRAG_DROP_AVAILABLE and hasattr(sys, '_MEIPASS'):
+            try:
+                tkdnd_path = os.path.join(sys._MEIPASS, 'tkinterdnd2', 'tkdnd')
+                os.environ['TKDND_LIBRARY'] = tkdnd_path
+                logging.debug("Set TKDND_LIBRARY path")
+            except Exception as e:
+                logging.warning(f"Failed to set TKDND_LIBRARY: {e}")
         
-        # Create main window
-        root = TkinterDnD.Tk()
+        # Create main window with fallback handling
+        try:
+            root = TkinterDnD.Tk()
+            logging.debug("Main window created with TkinterDnD")
+        except Exception as e:
+            logging.warning(f"TkinterDnD.Tk() failed: {e}, falling back to tk.Tk()")
+            root = tk.Tk()
+            DRAG_DROP_AVAILABLE = False
+        
         root.withdraw()
         logging.debug("Main window created")
         
@@ -779,7 +830,14 @@ def main():
         # Destroy splash screen and show main window
         splash.destroy()
         root.deiconify()
+        
+        # Ensure window appears prominently
+        root.lift()  # Bring window to front
+        root.attributes('-topmost', True)  # Make window stay on top temporarily
+        root.focus_force()  # Force focus on the window
         root.update()
+        root.after(100, lambda: root.attributes('-topmost', False))  # Remove topmost after 100ms
+        
         logging.debug("Main window displayed")
         
         root.mainloop()
